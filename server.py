@@ -1,40 +1,43 @@
-import select
-import socket
+import asyncio
+
+import settings
 
 
-read = []
-write = []
-errors = []
+async def main(host, port):
+    server = await asyncio.start_server(handle_connection, host, port)
+    async with server:
+        await server.serve_forever()
 
-server_address = ("", 1234)
+
+async def handle_connection(reader, writer):
+    writers.add(writer)
+    
+    while True:
+        try:
+            bytes = await reader.read(1024)
+        except ConnectionError:
+            break
+
+        if not bytes:
+            break
+        
+        await broadcast(bytes, writer)
+
+    writers.remove(writer)
+
+    writer.close()
 
 
-def main():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP) as server:
+async def broadcast(bytes, sender):
+    for writer in writers:
+                if writer != sender:
+                    writer.write(bytes)
+                    await writer.drain()
 
-        server.bind(server_address)
-        server.listen(1)
 
-        read.append(server)
+HOST, PORT = settings.HOST, settings.PORT
 
-        while(True):
-            readable, writeable, exceptional = select.select(read, write, errors)
-
-            for sock in readable:
-                if sock == server:
-                    connection, client_address = server.accept()
-                    print("Connected by", client_address)
-                    read.append(connection)
-                else:
-                    data_bytes = sock.recv(4096)
-                    data = data_bytes.decode("utf-8")
-
-                    data = data.upper()
-
-                    data_bytes = data.encode("utf-8")
-                    sock.send(data_bytes)
-
+writers = set()
 
 if __name__ == "__main__":
-    main()
-    
+    asyncio.run(main(HOST, PORT))
